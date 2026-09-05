@@ -191,7 +191,7 @@ python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"
 
 ## 📄 License
 
-This project is developed for academic purposes as part of a BTech CS/AI curriculum.
+The project has been developed as an academic exercise as part of the CS(AI) curriculum for the academic year 2026-27.
 
 ---
 
