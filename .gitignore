@@ -1,0 +1,86 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyo
+*.pyd
+
+# =========================
+# Jupyter Notebook
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Virtual Environments
+# =========================
+.env
+.venv/
+env/
+venv/
+ENV/
+
+# =========================
+# IDE / Editor
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# =========================
+# Raw Datasets & Large Files
+# =========================
+*.csv
+*.tsv
+*.parquet
+*.arrow
+*.feather
+*.h5
+*.hdf5
+data/raw/
+data/processed/
+!data/README.md
+
+# =========================
+# Model Weights & Checkpoints
+# =========================
+*.pkl
+*.pickle
+*.joblib
+*.pt
+*.pth
+*.bin
+*.onnx
+*.safetensors
+models/weights/
+models/checkpoints/
+!models/README.md
+
+# =========================
+# PyTorch / HuggingFace
+# =========================
+runs/
+lightning_logs/
+wandb/
+*.ckpt
+
+# =========================
+# Distribution / Packaging
+# =========================
+dist/
+build/
+*.egg-info/
+*.egg
+
+# =========================
+# Logs & Temp
+# =========================
+*.log
+logs/
+tmp/
+temp/

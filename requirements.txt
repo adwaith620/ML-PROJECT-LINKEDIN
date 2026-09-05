@@ -1,0 +1,23 @@
+# Core ML & Data Science
+pandas
+numpy
+scikit-learn
+
+# Jupyter
+jupyter
+ipykernel
+
+# HuggingFace Ecosystem
+datasets
+huggingface_hub
+sentence-transformers
+transformers
+torch
+
+# NLP
+spacy
+nltk
+
+# Visualization
+matplotlib
+seaborn
