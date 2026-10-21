@@ -5,11 +5,12 @@ Unified Resume Screening & Skill Gap Analysis Pipeline.
 Orchestrates:
 1. File validation & text extraction (PDF, DOCX, TXT)
 2. Text cleaning & normalization (preserving technical tokens)
-3. Skill and entity extraction
-4. Sentence-level non-fabricated evidence extraction
-5. Classical & semantic similarity matching
-6. Skill gap analysis & candidate scoring
-7. Structured report generation with warnings and processing metadata
+3. Job Description section parsing (Required vs Preferred vs Contextual)
+4. Multi-tier skill match classification (Exact, Alias, Related, Not Evidenced)
+5. Non-fabricated, prioritized sentence evidence extraction (Work Experience > Projects > Skills)
+6. Multi-modal similarity matching (TF-IDF Baseline + Sentence-BERT all-MiniLM-L6-v2)
+7. Configurable weighted scoring with explicit component transparency
+8. Publication-ready structured analysis result with quality warnings
 """
 
 import os
@@ -30,8 +31,9 @@ from src.resume_parser import (
     EmptyDocumentError,
 )
 from src.preprocessing.text_cleaner import clean_text
-from src.skill_extraction.extractor import extract_from_resume, extract_from_job
-from src.scoring.skill_gap import analyze_skill_gap
+from src.skill_extraction.extractor import extract_from_resume
+from src.skill_extraction.jd_parser import parse_job_description
+from src.skill_extraction.match_classifier import classify_skill_matches
 from src.scoring.candidate_score import calculate_candidate_score
 from src.matching.sentence_bert import SemanticMatcher
 
@@ -101,55 +103,6 @@ def compute_baseline_tfidf_similarity(resume_text: str, jd_text: str) -> float:
         return 0.0
 
 
-def extract_evidence_snippets(text: str, skills: List[str], max_snippets: int = 1) -> Dict[str, List[str]]:
-    """
-    Extracts genuine, non-fabricated sentence snippets from text where skills appear.
-    Searches for both canonical names and known surface aliases (e.g. 'AWS' for 'amazon web services').
-    """
-    if not text or not skills:
-        return {}
-
-    from src.skill_extraction.skill_dictionary import ALIAS_MAP
-    from src.scoring.skill_gap import normalize_skill
-
-    # Invert ALIAS_MAP to find surface forms for each canonical name
-    canonical_to_aliases: Dict[str, List[str]] = {}
-    for alias, canonical in ALIAS_MAP.items():
-        norm_canonical = normalize_skill(canonical)
-        canonical_to_aliases.setdefault(norm_canonical, []).append(alias)
-        canonical_to_aliases.setdefault(norm_canonical, []).append(canonical)
-        canonical_to_aliases.setdefault(alias.lower(), []).append(canonical)
-
-    # Split text into rough sentences
-    sentences = re.split(r'(?<=[.!?\n])\s+', text)
-    evidence: Dict[str, List[str]] = {}
-
-    for skill in skills:
-        skill_lower = skill.lower()
-        search_terms = {skill_lower}
-        if skill_lower in canonical_to_aliases:
-            search_terms.update(canonical_to_aliases[skill_lower])
-
-        # Build regex for these search terms
-        sorted_terms = sorted(search_terms, key=len, reverse=True)
-        escaped_terms = [re.escape(t) for t in sorted_terms]
-        pattern = re.compile(r'(?<![\w])(?:' + '|'.join(escaped_terms) + r')(?![\w])', re.IGNORECASE)
-
-        found = []
-        for s in sentences:
-            s_clean = s.strip()
-            if len(s_clean) >= 5 and pattern.search(s_clean):
-                clean_s = re.sub(r'\s+', ' ', s_clean)
-                if len(clean_s) > 160:
-                    clean_s = clean_s[:157] + "..."
-                found.append(clean_s)
-                if len(found) >= max_snippets:
-                    break
-        evidence[skill] = found
-
-    return evidence
-
-
 def analyze_candidate(
     resume_input: Union[bytes, str],
     resume_filename: str,
@@ -216,37 +169,50 @@ def analyze_candidate(
     if len(cleaned_jd.split()) < 20:
         warnings.append("Job description is very brief (< 20 words). Matching accuracy may be limited.")
 
-    # 4. Extract Skills and Entities
+    # 4. Job Description Section-Aware Skill Parsing
+    jd_analysis = parse_job_description(cleaned_jd)
+    required_skills = jd_analysis["required_skills"]
+    preferred_skills = jd_analysis["preferred_skills"]
+    contextual_skills = jd_analysis["contextual_skills"]
+    section_certainty = jd_analysis["section_certainty"]
+    detected_sections = jd_analysis["detected_sections"]
+
+    if section_certainty == "inferred":
+        warnings.append(
+            "Job description does not contain explicit 'Required' vs 'Preferred' section headers. "
+            "Skill requirements were inferred using contextual cues."
+        )
+
+    if not required_skills:
+        warnings.append(
+            "No explicit required technical skills were identified in the job description. "
+            "Compatibility score relies predominantly on semantic and lexical alignment."
+        )
+
+    # 5. Extract Skills and Entities from Resume
     resume_entities = extract_from_resume(cleaned_resume)
-    jd_entities = extract_from_job(cleaned_jd)
+    cand_skills_detailed = resume_entities.get("skills", [])
 
-    cand_skills_canonical = [item["canonical"] for item in resume_entities.get("skills", [])]
-    req_skills_canonical = [item["canonical"] for item in jd_entities.get("skills", [])]
-
-    if not req_skills_canonical:
+    if not cand_skills_detailed:
         warnings.append(
-            "No explicit technical skills from the standard taxonomy were detected in the job description. "
-            "Skill coverage score is calculated based on available content."
+            "No technical skills from the standard taxonomy were detected in the candidate resume."
         )
 
-    if not cand_skills_canonical:
-        warnings.append(
-            "No technical skills from the standard taxonomy were detected in the resume."
-        )
-
-    # 5. Skill Gap Analysis
-    gap_analysis = analyze_skill_gap(
-        candidate_skills=cand_skills_canonical,
-        required_skills=req_skills_canonical
+    # 6. Detailed Multi-Tier Skill Match Classification & Evidence Extraction
+    match_result = classify_skill_matches(
+        resume_skills_dict=cand_skills_detailed,
+        required_skills=required_skills,
+        preferred_skills=preferred_skills,
+        resume_text=raw_resume_text
     )
 
-    matched_skills = gap_analysis["matched_required"]
-    missing_required = gap_analysis["missing_required"]
-    additional_skills = gap_analysis["additional_skills"]
-    skill_match_pct = gap_analysis["match_percentage"]
-
-    # 6. Evidence Snippet Extraction (Genuine, from resume)
-    evidence_map = extract_evidence_snippets(cleaned_resume, matched_skills)
+    matched_required = match_result["matched_required"]
+    related_matches = match_result["related_matches"]
+    missing_required = match_result["missing_required"]
+    matched_preferred = match_result["matched_preferred"]
+    missing_preferred = match_result["missing_preferred"]
+    additional_skills = match_result["additional_skills"]
+    metrics = match_result["metrics"]
 
     # 7. Similarities & Matching
     # Baseline TF-IDF
@@ -261,10 +227,8 @@ def analyze_candidate(
 
     if can_use_semantic:
         try:
-            # Ensure model loaded
             if matcher.load_model():
                 raw_sem = matcher.compute_similarity(cleaned_resume, cleaned_jd)
-                # Cosine similarity in [-1, 1], clamp to [0, 1] for positive similarity
                 semantic_similarity = round(max(0.0, min(1.0, float(raw_sem))), 4)
                 active_method = "Sentence-BERT (all-MiniLM-L6-v2) + Classical Hybrid"
             else:
@@ -282,15 +246,47 @@ def analyze_candidate(
             semantic_similarity = None
 
     # 8. Score Calculation
+    # Preferred skills provide a modest, capped bonus (up to 5.0 pts, 2 pts per preferred skill matched)
+    preferred_bonus = min(5.0, metrics["preferred_skills_matched_count"] * 2.0)
+
     score_data = calculate_candidate_score(
-        skill_match_percentage=skill_match_pct,
+        skill_match_percentage=metrics["skill_coverage_percentage"],
         baseline_text_score=baseline_similarity,
-        semantic_score=semantic_similarity
+        semantic_score=semantic_similarity,
+        preferred_skill_bonus=preferred_bonus
     )
 
     overall_score = score_data["overall_score"]
     recommendation = score_data["recommendation"]
     score_breakdown = score_data["score_breakdown"]
+
+    # Format unified matched_skills list combining exact/alias and related for UI presentation
+    unified_matched_list = []
+    for m in matched_required:
+        unified_matched_list.append({
+            "skill": m["skill"],
+            "match_type": m["match_type"],
+            "surface_form_detected": m["surface_form_detected"],
+            "evidence": m["evidence"],
+            "evidence_category": m["evidence_category"],
+            "transferable_credit": m["transferable_credit"],
+            "is_required": True,
+            "is_related": False,
+        })
+
+    for r in related_matches:
+        unified_matched_list.append({
+            "skill": r["required_skill"],
+            "match_type": "Related skill",
+            "candidate_related_skill": r["candidate_related_skill"],
+            "relationship": r["relationship"],
+            "surface_form_detected": r["candidate_related_skill"],
+            "evidence": r["evidence"],
+            "evidence_category": r["evidence_category"],
+            "transferable_credit": r["transferable_credit"],
+            "is_required": True,
+            "is_related": True,
+        })
 
     # 9. Structure Result
     result = {
@@ -301,20 +297,21 @@ def analyze_candidate(
         "analysis_method": active_method,
         "overall_score": overall_score,
         "recommendation": recommendation,
-        "required_skills_total": len(req_skills_canonical),
-        "required_skills_matched": len(matched_skills),
-        "skill_match_percentage": skill_match_pct,
-        "matched_skills": [
-            {
-                "skill": s,
-                "evidence": evidence_map.get(s, [])
-            } for s in matched_skills
-        ],
+        "required_skills_total": metrics["required_skills_total"],
+        "required_skills_matched": metrics["exact_alias_matched_count"],
+        "skill_match_percentage": metrics["skill_coverage_percentage"],
+        "matched_skills": unified_matched_list,
+        "related_matches": related_matches,
         "missing_required_skills": missing_required,
+        "matched_preferred": matched_preferred,
+        "missing_preferred_skills": missing_preferred,
         "additional_skills": additional_skills,
         "semantic_similarity": semantic_similarity,
         "lexical_similarity": round(baseline_similarity, 4),
         "score_breakdown": score_breakdown,
+        "coverage_metrics": metrics,
+        "section_certainty": section_certainty,
+        "detected_sections": detected_sections,
         "experience_findings": resume_entities.get("experience", []),
         "education_findings": resume_entities.get("education", []),
         "certifications_findings": resume_entities.get("certifications", []),
@@ -323,7 +320,7 @@ def analyze_candidate(
         "processing_metadata": {
             "resume_meta": resume_meta,
             "jd_meta": jd_meta,
-            "pipeline_version": "1.0.0",
+            "pipeline_version": "1.1.0",
         }
     }
 

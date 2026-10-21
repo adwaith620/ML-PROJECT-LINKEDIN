@@ -9,7 +9,7 @@
 
 ## 1. Project Objective
 
-TalentLens is an end-to-end, privacy-respecting recruitment decision-support system powered by Natural Language Processing (NLP) and Machine Learning. The application parses candidate resumes (PDF, DOCX, TXT), validates document integrity, cleans text while preserving specialized technical tokens (such as `C++`, `C#`, `.NET`, `Node.js`, and `React.js`), extracts technical competencies, compares them against employer job descriptions, conducts structured skill gap analyses, and calculates objective, multi-modal compatibility scores with sentence-level textual evidence.
+TalentLens is an end-to-end recruitment decision-support system powered by Natural Language Processing (NLP) and Machine Learning. The application parses candidate resumes (PDF, DOCX, TXT), validates document integrity, cleans text while preserving specialized technical tokens (such as `C++`, `C#`, `.NET`, `CI/CD`, `Python 3`, and `SQL`), performs section-aware parsing of job descriptions, classifies skills across four precision tiers (Exact match, Recognized alias, Related skill with transferable credit, Not evidenced), extracts prioritized sentence-level evidence (preferring Work Experience and Projects over flat skills lists), and calculates transparent compatibility scores in both Light and Dark themes.
 
 ---
 
@@ -172,30 +172,39 @@ npm run dev
 
 ## 10. Testing & Verification
 
-Run the full automated test suite (52 unit and integration tests):
+Run the full automated test suite (67 unit and integration tests):
 ```cmd
 python -m pytest
 ```
 
 ### Test Suite Results (100% Passing)
 ```text
-tests\test_api_integration.py ......                                     [ 11%]
-tests\test_evaluation.py ......                                          [ 23%]
-tests\test_matching.py ...                                               [ 28%]
-tests\test_preprocessing.py .......                                      [ 42%]
-tests\test_resume_parser.py ..........                                   [ 61%]
-tests\test_scoring.py ......                                             [ 73%]
-tests\test_sentence_bert.py .....                                        [ 82%]
-tests\test_skill_extraction.py .........                                 [100%]
+tests\test_api_integration.py ......                                     [  8%]
+tests\test_evaluation.py ......                                          [ 17%]
+tests\test_matching.py ...                                               [ 22%]
+tests\test_preprocessing.py .......                                      [ 32%]
+tests\test_resume_parser.py ..........                                   [ 47%]
+tests\test_scoring.py ......                                             [ 56%]
+tests\test_sentence_bert.py .....                                        [ 64%]
+tests\test_skill_extraction.py .........                                 [ 77%]
+tests\test_skill_matching_accuracy.py ...............                    [100%]
 
-======================= 52 passed in 19.69s =======================
+======================= 67 passed in 21.56s (100% Pass) =======================
 ```
 
 Detailed test logs and boundary verification are recorded in [`docs/testing_report.md`](docs/testing_report.md).
 
 ---
 
-## 11. Privacy & Data Handling
+## 11. Sample Inputs for Testing
+
+Sample input files are provided in `data/sample_inputs/` for immediate verification:
+- `data/sample_inputs/sample_resume_alex_rivers.txt` — Senior Backend Engineer resume with real-world work experience, projects, and skills.
+- `data/sample_inputs/sample_job_senior_backend_engineer.txt` — Job posting with explicit Required Qualifications and Preferred Qualifications.
+
+---
+
+## 12. Privacy & Data Handling
 
 - **Zero Permanent Storage:** Resumes, job descriptions, and extracted texts are never permanently saved to database disks.
 - **Safe Memory Processing:** Documents are processed in-memory or in strictly isolated temporary buffers and discarded immediately after report generation.
@@ -203,11 +212,11 @@ Detailed test logs and boundary verification are recorded in [`docs/testing_repo
 
 ---
 
-## 12. Documentation Index
+## 13. Documentation Index
 
 - [`docs/implementation_audit.md`](docs/implementation_audit.md) — Comprehensive pre-integration audit of all project branches and commits.
 - [`docs/architecture.md`](docs/architecture.md) — System specifications, component topology, and data flow.
 - [`docs/scoring_methodology.md`](docs/scoring_methodology.md) — Mathematical formulas, weights, and recommendation categories.
 - [`docs/file_upload_limits.md`](docs/file_upload_limits.md) — Multi-tier upload limits and DoS defense boundaries.
 - [`docs/exai_feasibility_report.md`](docs/exai_feasibility_report.md) — Detailed research report on EXAI and `mithinsagar/exai-resumeintel-data`.
-- [`docs/testing_report.md`](docs/testing_report.md) — Verification report across all 52 automated tests.
+- [`docs/testing_report.md`](docs/testing_report.md) — Verification report across all 67 automated tests.

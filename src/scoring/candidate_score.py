@@ -1,6 +1,9 @@
 """
+candidate_score.py
+
 Module for Candidate Scoring.
 Aggregates skill matches and ML baseline/semantic text scores into a final weighted score.
+Supports transparent breakdowns, fallback modes, and documented preferred skill bonus.
 """
 from typing import Dict, Any, Optional
 from .config import DEFAULT_WEIGHTS_NO_SEMANTIC, DEFAULT_WEIGHTS_WITH_SEMANTIC, RECOMMENDATION_THRESHOLDS
@@ -19,18 +22,22 @@ def determine_recommendation(score: float) -> str:
 def calculate_candidate_score(
     skill_match_percentage: float, 
     baseline_text_score: float = 0.0, 
-    semantic_score: Optional[float] = None
+    semantic_score: Optional[float] = None,
+    preferred_skill_bonus: float = 0.0
 ) -> Dict[str, Any]:
     """
     Calculate an overall weighted score.
     
-    If semantic_score is None (Phase 5 not integrated), the weights adjust 
-    automatically to ignore it. Both text scores are expected to be in the [0, 1] range
-    and will be scaled to [0, 100].
+    If semantic_score is None (offline or Sentence-BERT unavailable), the weights 
+    adjust automatically to the classical fallback configuration (60% skills, 40% TF-IDF).
+    Both text scores are expected to be in the [0, 1] range and will be scaled to [0, 100].
+    
+    Preferred skills bonus is added directly to the total (capped at 5.0 pts).
+    The final score is strictly bounded in [0.0, 100.0].
     
     Returns a dictionary with the final score, the breakdown, and the recommendation.
     """
-    # Select weights based on Phase 5 integration status
+    # Select weights based on semantic availability
     if semantic_score is None:
         weights = DEFAULT_WEIGHTS_NO_SEMANTIC
         semantic_val = 0.0
@@ -45,9 +52,12 @@ def calculate_candidate_score(
     score_baseline = baseline_val * weights["text_baseline"]
     score_semantic = semantic_val * weights["semantic_match"]
     
-    final_score = score_skills + score_baseline + score_semantic
+    # Cap preferred skill bonus at 5.0 points
+    bounded_pref_bonus = max(0.0, min(5.0, preferred_skill_bonus))
     
-    # Bound the score
+    final_score = score_skills + score_baseline + score_semantic + bounded_pref_bonus
+    
+    # Bound the total score
     final_score = max(0.0, min(100.0, final_score))
     
     return {
@@ -57,6 +67,7 @@ def calculate_candidate_score(
             "skill_contribution": round(score_skills, 2),
             "baseline_text_contribution": round(score_baseline, 2),
             "semantic_text_contribution": round(score_semantic, 2),
+            "preferred_skill_bonus": round(bounded_pref_bonus, 2),
             "weights_used": weights
         }
     }

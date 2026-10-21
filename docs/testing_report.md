@@ -2,7 +2,7 @@
 
 **Project:** Resume Screening & Skill Gap Analysis System (TalentLens)  
 **Date:** October 21, 2026  
-**Execution Environment:** Windows 11, Python 3.11.9, Node.js v26.4.0, Vite 6.2.0  
+**Execution Environment:** Windows 11, Python 3.11.9, Node.js v26.4.0, Vite 8.3.5  
 **Test Suite Runner:** `pytest 9.1.1`  
 
 ---
@@ -19,60 +19,44 @@
 | `tests/test_sentence_bert.py` | Sentence-BERT embeddings, chunking, similarity calculation, threshold classification | 5 | 5 | 0 | ~3.8s |
 | `tests/test_scoring.py` | Skill gap analysis, weighted scoring, threshold recommendations | 6 | 6 | 0 | ~0.2s |
 | `tests/test_evaluation.py` | Classification metrics, confusion matrix, textual explanation generation | 6 | 6 | 0 | ~0.3s |
-| **Total** | **Full System Test Suite** | **52** | **52** | **0** | **19.69s** |
+| `tests/test_skill_matching_accuracy.py` | Accuracy, JD section parsing, multi-tier classification, transferable skills & evidence prioritization | 15 | 15 | 0 | ~1.2s |
+| **Total** | **Full System Test Suite** | **67** | **67** | **0** | **21.56s (100% Pass)** |
 
 ---
 
 ## 2. Key Verified Test Scenarios
 
-### 2.1 Document Extraction & Upload Limits (`test_resume_parser.py`)
-- **TXT Document:** Tested valid UTF-8 and ANSI decoded resumes; successfully parsed characters and words.
-- **DOCX Document:** Tested binary OpenXML DOCX packages; extracted paragraph bodies and table contents.
-- **PDF Document:** Tested multi-element PDF structures via `pypdf`; extracted text while monitoring page limits.
-- **Empty Document Handling:** 0-byte files strictly rejected with `EmptyDocumentError` (HTTP 400).
-- **Format Validation:** Unsupported file extensions (`.exe`, `.png`) strictly rejected with `UnsupportedFormatError` (HTTP 415).
-- **Corrupted Document Defense:** Truncated headers and malformed binary blobs safely caught and raised as `CorruptedDocumentError` (HTTP 422).
-- **Resume File Size Cap:** Files exceeding 25 MB ($26,214,400$ bytes) rejected with `FileSizeExceededError` (HTTP 413).
-- **Job Description Size Cap:** Files exceeding 10 MB ($10,485,760$ bytes) rejected with `FileSizeExceededError` (HTTP 413).
-- **PDF Page Count Cap:** Documents exceeding 100 pages rejected before text extraction with `PageLimitExceededError` (HTTP 400).
+### 2.1 Skill Matching Accuracy & Edge Cases (`test_skill_matching_accuracy.py`)
+- **Python & Aliases:** Verified detection and normalization for `Python`, `python3`, `python 3`, `py`. Fixed prior boundary matching bug where `python3` was missed.
+- **Punctuated Technologies:** Verified extraction of `C++`, `C#`, `.NET`, and `CI/CD` without tokenization stripping or regex errors.
+- **Word Boundary Collision Defense:** Verified that `Java` is not erroneously extracted from occurrences of `JavaScript`.
+- **Database & Query Extraction:** Verified exact extraction of `SQL`, `NoSQL`, `PostgreSQL`, `MongoDB`.
 
-### 2.2 Backend API Integration (`test_api_integration.py`)
-- **Health Check (`GET /api/health`):** Verified HTTP 200 response reporting model readiness, device, and active limits.
-- **Configuration (`GET /api/config`):** Verified HTTP 200 response with supported extensions and default scoring weights.
-- **Multipart Document Analysis (`POST /api/analyze`):**
-  - Uploaded synthetic resume file with pasted job description.
-  - Returned HTTP 200 with complete structured payload (`overall_score`, `recommendation`, `matched_skills`, `missing_required_skills`, `additional_skills`, `score_breakdown`).
-  - Verified non-fabricated evidence snippets extracted directly from resume text.
-- **Input Validation:** Empty JD strings and invalid file formats rejected with appropriate HTTP status codes (400 and 415).
-- **PDF Report Generation (`POST /api/export/pdf`):** Verified HTTP 200 returning valid binary PDF stream starting with `%PDF-` and correct `Content-Disposition` header.
+### 2.2 Section-Aware Job Description Parsing
+- **Explicit Section Separation:** Correctly partitions JDs containing "Required Qualifications", "Preferred Qualifications", and "Company Overview". Verified that preferred skills (`Kubernetes`, `AWS`, `Redis`) are isolated from the required denominator.
+- **Contextual Cue Inferred Fallback:** When headers are missing, sentences are classified into required and preferred buckets using linguistic cues ("must have", "required" vs "nice to have", "plus").
 
-### 2.3 ML Pipeline & Technical Token Preservation (`test_preprocessing.py` & `test_skill_extraction.py`)
-- Verified that critical technical terms (`C++`, `C#`, `.NET`, `Node.js`, `React.js`, `Python 3`, `CI/CD`) are preserved during cleaning and not corrupted by punctuation stripping.
-- Verified that alias normalisation maps `k8s` $\to$ `kubernetes`, `js` $\to$ `javascript`, `ml` $\to$ `machine learning`.
-- Verified genuine sentence snippet extraction for matched skills.
+### 2.3 Multi-Tier Match Classification & Transferable Skills
+- **Exact vs. Alias Classification:** Distinguishes between explicit mentions (`Python` $\to$ Exact match) and recognized aliases (`k8s` $\to$ Recognized alias for `Kubernetes`).
+- **Transferable Credit ($c_{\text{rel}}$):** Evaluates domain-equivalent skills (e.g. candidate has `PostgreSQL`, JD requires `MySQL` $\to$ awards 50% partial credit; candidate has `Docker`, JD requires `Kubernetes` $\to$ awards 40% partial credit).
+- **Not Evidenced Classification:** Strictly flags unmentioned competencies under `missing_required_skills`.
 
-### 2.4 Semantic & Classical Matching (`test_sentence_bert.py` & `test_matching.py`)
-- Verified `BaselineFeatureExtractor` loading and paired cosine distance calculation.
-- Verified Sentence-BERT `all-MiniLM-L6-v2` embedding generation, token chunking with overlap, and cosine similarity.
-- Verified fallback mechanism to TF-IDF when Sentence-BERT is offline.
+### 2.4 Evidence Prioritization & Non-Duplication
+- **Experiential Prioritization:** Verifies that sentence extraction selects bullet points from Work Experience or Projects over flat comma-separated skills lists.
+- **Snippet Diversity:** Distinct skills are paired with distinct resume sentences, preventing repeated long inventory excerpts.
+
+### 2.5 Scoring Transparency & Denominators
+- **Explicit Denominator:** Denominator is strictly $N_{\text{req}}$. Preferred skills provide a modest, capped bonus ($+2.0$ pts per preferred skill, capped at $+5.0$ pts).
+- **Zero Denominator Handling:** When no technical skills are required, division by zero is safely prevented.
+
+### 2.6 Frontend Build & Dark Mode
+- **Production Build:** Verified `npm run build` succeeds cleanly via Vite 8.3.5 with 0 TypeScript compiler warnings.
+- **WCAG 2.2 AA Contrast:** Verified color contrast for text surfaces ($\ge 4.5:1$) in both light and dark modes.
 
 ---
 
-## 3. Frontend Build Verification
+## 3. End-to-End Verification
 
-```text
-> talentlens-frontend@1.0.0 build
-> tsc && vite build
-
-vite v8.3.5 building client environment for production...
-transforming...
-✓ 1933 modules transformed.
-rendering chunks...
-dist/index.html                   0.69 kB │ gzip:  0.40 kB
-dist/assets/index-Cf-c6VG7.css   10.08 kB │ gzip:  2.39 kB
-dist/assets/index-CXUkpW_x.js   243.25 kB │ gzip: 75.55 kB
-✓ built in 580ms
-```
-
-- TypeScript compiler (`tsc`): 0 errors, strict mode enabled.
-- Vite bundle production output: Verified clean, asset sizes within optimal performance bounds.
+The complete pipeline was verified using real sample files (`data/sample_inputs/sample_resume_alex_rivers.txt` and `data/sample_inputs/sample_job_senior_backend_engineer.txt`):
+- **HTTP POST `/api/analyze`**: Returned status 200, overall score 75.47% (Moderate Match), with exact matches for Python, FastAPI, Docker, PostgreSQL, SQL, CI/CD, REST APIs, and a related skill match for MySQL (50% credit via PostgreSQL).
+- **HTTP POST `/api/export/pdf`**: Returned status 200 with a valid 7,640-byte vector PDF report.

@@ -4,7 +4,6 @@ import {
   FileText,
   CheckCircle2,
   AlertCircle,
-  HelpCircle,
   Download,
   Copy,
   RotateCcw,
@@ -12,6 +11,11 @@ import {
   FileCheck,
   X,
   FileUp,
+  Sun,
+  Moon,
+  Zap,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import { AnalysisResult, BackendHealth } from './types';
 import './styles.css';
@@ -31,8 +35,39 @@ export const App: React.FC = () => {
   const [health, setHealth] = useState<BackendHealth | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<boolean>(false);
 
+  // Accessible Dark Mode state with persistence & system preference fallback
+  const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
+    const savedTheme = localStorage.getItem('talentlens_theme');
+    if (savedTheme === 'dark') return true;
+    if (savedTheme === 'light') return false;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
+
   const resumeInputRef = useRef<HTMLInputElement>(null);
   const jdFileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync theme changes to body class and localStorage
+  useEffect(() => {
+    if (isDarkMode) {
+      document.body.classList.add('dark-theme');
+      localStorage.setItem('talentlens_theme', 'dark');
+    } else {
+      document.body.classList.remove('dark-theme');
+      localStorage.setItem('talentlens_theme', 'light');
+    }
+  }, [isDarkMode]);
+
+  // Listen for OS system theme changes if user has not set a preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('talentlens_theme')) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   // Check backend health on mount
   useEffect(() => {
@@ -118,7 +153,7 @@ export const App: React.FC = () => {
     setLoading(true);
     setAnalysisResult(null);
 
-    // Honest staged progress updates
+    // Staged progress updates
     setCurrentStage('Uploading document to analysis engine...');
     setStageProgress(20);
 
@@ -133,12 +168,12 @@ export const App: React.FC = () => {
 
     try {
       const stageTimer1 = setTimeout(() => {
-        setCurrentStage('Extracting document text and verifying structure...');
+        setCurrentStage('Extracting document text and parsing requirements...');
         setStageProgress(45);
       }, 500);
 
       const stageTimer2 = setTimeout(() => {
-        setCurrentStage('Extracting technical skills and computing lexical & semantic fit...');
+        setCurrentStage('Classifying exact, alias & related skills and computing ML embeddings...');
         setStageProgress(75);
       }, 1200);
 
@@ -214,7 +249,12 @@ export const App: React.FC = () => {
   // Copy Summary
   const handleCopySummary = () => {
     if (!analysisResult) return;
-    const matched = analysisResult.matched_skills.map((m) => m.skill).join(', ') || 'None';
+    const matched = analysisResult.matched_skills.map((m) => {
+      if (m.is_related) {
+        return `${m.skill} (via ${m.candidate_related_skill}, ${(m.transferable_credit || 0.5) * 100}%)`;
+      }
+      return m.skill;
+    }).join(', ') || 'None';
     const missing = analysisResult.missing_required_skills.join(', ') || 'None';
     const additional = analysisResult.additional_skills.join(', ') || 'None';
 
@@ -259,31 +299,61 @@ Additional Skills: ${additional}`;
     return (bytes / (1024 * 1024)).toFixed(2) + ' MB';
   };
 
+  const formatEvidenceCategory = (category?: string) => {
+    switch (category) {
+      case 'work_experience':
+        return 'Work Experience';
+      case 'projects':
+        return 'Projects';
+      case 'education_certification':
+        return 'Education & Certifications';
+      case 'skills_list':
+        return 'Skills Inventory';
+      default:
+        return 'Document Text';
+    }
+  };
+
   return (
     <div className="app-container">
       {/* Header */}
       <header className="app-header">
         <div className="brand-section">
-          <div className="brand-logo">TL</div>
+          <div className="brand-logo" aria-hidden="true">TL</div>
           <div>
             <h1 className="brand-title">TalentLens</h1>
             <p className="brand-subtitle">Resume Screening & Skill Gap Analysis System</p>
           </div>
         </div>
 
-        <div className="header-status">
-          <div className={`status-dot ${health?.status === 'healthy' ? 'active' : ''}`} />
-          <span>
-            {health?.status === 'healthy'
-              ? `Local Engine Active (${health.models.sentence_bert.ready ? 'Sentence-BERT Loaded' : 'Sentence-BERT Cached'})`
-              : 'Connecting to Engine...'}
-          </span>
+        <div className="header-controls">
+          {/* Dark Mode Toggle Button */}
+          <button
+            type="button"
+            className="theme-toggle-btn"
+            onClick={() => setIsDarkMode((prev) => !prev)}
+            aria-label={isDarkMode ? 'Switch to light theme' : 'Switch to dark theme'}
+            title={isDarkMode ? 'Switch to light theme' : 'Switch to dark theme'}
+          >
+            {isDarkMode ? <Sun size={15} /> : <Moon size={15} />}
+            <span>{isDarkMode ? 'Light Mode' : 'Dark Mode'}</span>
+          </button>
+
+          {/* Backend Status Indicator */}
+          <div className="header-status">
+            <div className={`status-dot ${health?.status === 'healthy' ? 'active' : ''}`} />
+            <span>
+              {health?.status === 'healthy'
+                ? `Local Engine (${health.models.sentence_bert.ready ? 'Sentence-BERT Active' : 'TF-IDF Baseline'})`
+                : 'Connecting to Engine...'}
+            </span>
+          </div>
         </div>
       </header>
 
       {/* Global Error Alert */}
       {error && (
-        <div className="alert-error">
+        <div className="alert-error" role="alert">
           <AlertCircle size={18} />
           <span>{error}</span>
         </div>
@@ -310,6 +380,14 @@ Additional Skills: ${additional}`;
                   onDragLeave={handleDragLeave}
                   onDrop={handleDrop}
                   onClick={() => resumeInputRef.current?.click()}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      resumeInputRef.current?.click();
+                    }
+                  }}
+                  aria-label="Upload Candidate Resume"
                 >
                   <Upload className="dropzone-icon" size={32} />
                   <p className="dropzone-text">Click to browse or drag and drop resume</p>
@@ -338,6 +416,7 @@ Additional Skills: ${additional}`;
                   <button
                     className="btn-remove"
                     title="Remove file"
+                    aria-label="Remove resume file"
                     onClick={() => setResumeFile(null)}
                   >
                     <X size={18} />
@@ -368,6 +447,7 @@ Additional Skills: ${additional}`;
                   <button
                     className="btn-remove"
                     title="Remove JD file"
+                    aria-label="Remove JD document"
                     onClick={() => setJdFile(null)}
                   >
                     <X size={18} />
@@ -376,10 +456,11 @@ Additional Skills: ${additional}`;
               ) : (
                 <textarea
                   className="jd-textarea"
-                  placeholder="Paste the job description here... (e.g., Senior Python Developer required. Must have strong skills in Python, FastAPI, Docker, and PostgreSQL...)"
+                  placeholder="Paste the job description here... (e.g., Senior Python Developer required. Must have strong skills in Python, FastAPI, Docker, and PostgreSQL. Preferred: Kubernetes, Redis...)"
                   value={jdText}
                   onChange={(e) => setJdText(e.target.value)}
                   disabled={loading}
+                  aria-label="Job description text"
                 />
               )}
 
@@ -504,6 +585,12 @@ Additional Skills: ${additional}`;
                 <span className="stat-value">
                   {analysisResult.required_skills_matched} of {analysisResult.required_skills_total} ({analysisResult.skill_match_percentage.toFixed(0)}%)
                 </span>
+                {analysisResult.coverage_metrics && analysisResult.coverage_metrics.related_matched_count > 0 && (
+                  <span style={{ fontSize: 11, color: 'var(--color-related)', marginTop: 2 }}>
+                    +{analysisResult.coverage_metrics.related_matched_count} related skill (
+                    {analysisResult.coverage_metrics.effective_matched_units.toFixed(1)} effective units)
+                  </span>
+                )}
               </div>
 
               <div className="stat-item">
@@ -528,6 +615,18 @@ Additional Skills: ${additional}`;
               </div>
             </div>
           </div>
+
+          {/* Section Parsing Notice */}
+          {analysisResult.section_certainty && (
+            <div className="alert-info">
+              <Info size={14} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6 }} />
+              <span>
+                {analysisResult.section_certainty === 'explicit'
+                  ? 'Job description sections (Required vs. Preferred qualifications) were identified from explicit document headers.'
+                  : 'Job description requirements were classified using contextual cues (no explicit headers found).'}
+              </span>
+            </div>
+          )}
 
           {/* Score Component Breakdown Table */}
           <div className="skills-card">
@@ -564,6 +663,17 @@ Additional Skills: ${additional}`;
                     <td>{analysisResult.score_breakdown.semantic_text_contribution.toFixed(1)} pts</td>
                   </tr>
                 )}
+                {analysisResult.score_breakdown.preferred_skill_bonus !== undefined &&
+                  analysisResult.score_breakdown.preferred_skill_bonus > 0 && (
+                    <tr>
+                      <td>Preferred Skills Bonus (Desirable Qualifications)</td>
+                      <td>Bonus (up to 5.0 pts)</td>
+                      <td>
+                        {analysisResult.coverage_metrics?.preferred_skills_matched_count || 0} preferred skills evidenced
+                      </td>
+                      <td>+{analysisResult.score_breakdown.preferred_skill_bonus.toFixed(1)} pts</td>
+                    </tr>
+                  )}
                 <tr className="total-row">
                   <td>Total Compatibility Score</td>
                   <td>100%</td>
@@ -574,15 +684,15 @@ Additional Skills: ${additional}`;
             </table>
           </div>
 
-          {/* Matched Skills with Evidence */}
+          {/* Matched Required Skills with Evidence & Multi-Tier Classification */}
           <div className="skills-card">
             <div className="panel-header">
               <div>
                 <h3 className="panel-title">
-                  Matched Skills ({analysisResult.matched_skills.length})
+                  Matched Required Skills ({analysisResult.matched_skills.length})
                 </h3>
                 <p className="panel-desc">
-                  Required competencies explicitly identified in the job description that were evidenced in the candidate's resume.
+                  Required competencies from the job description that were evidenced in the candidate's resume, classified by match type.
                 </p>
               </div>
               <span className="limit-badge" style={{ color: 'var(--color-success)', background: 'var(--color-success-light)' }}>
@@ -594,25 +704,53 @@ Additional Skills: ${additional}`;
               <table className="matched-skills-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 180 }}>Matched Skill</th>
-                    <th>Text Evidence Snippet from Resume</th>
+                    <th style={{ width: 220 }}>Required Skill & Match Type</th>
+                    <th>Prioritized Resume Evidence Snippet</th>
                   </tr>
                 </thead>
                 <tbody>
                   {analysisResult.matched_skills.map((item, idx) => (
                     <tr key={idx}>
                       <td>
-                        <span className="skill-pill matched">
-                          <CheckCircle2 size={14} />
+                        <span className={`skill-pill ${item.is_related ? 'related' : 'matched'}`}>
+                          {item.is_related ? <Zap size={14} /> : <CheckCircle2 size={14} />}
                           <span>{item.skill}</span>
                         </span>
+                        
+                        <div style={{ marginTop: 4 }}>
+                          {item.match_type === 'Exact match' && (
+                            <span className="badge-match-type badge-match-exact">Exact Match</span>
+                          )}
+                          {item.match_type === 'Recognized alias' && (
+                            <span className="badge-match-type badge-match-alias">
+                              Alias: detected "{item.surface_form_detected || item.skill}"
+                            </span>
+                          )}
+                          {item.is_related && (
+                            <span className="badge-match-type badge-match-related">
+                              Related Skill ({(item.transferable_credit || 0.5) * 100}% Credit)
+                            </span>
+                          )}
+                        </div>
+
+                        {item.is_related && (
+                          <div className="related-callout">
+                            Candidate demonstrates <b>{item.candidate_related_skill}</b>.
+                            {item.relationship && ` (${item.relationship})`}
+                          </div>
+                        )}
                       </td>
                       <td>
+                        {item.evidence_category && (
+                          <div className="badge-evidence-category">
+                            {formatEvidenceCategory(item.evidence_category)}
+                          </div>
+                        )}
                         {item.evidence && item.evidence.length > 0 ? (
                           <div className="evidence-quote">"{item.evidence[0]}"</div>
                         ) : (
-                          <span style={{ color: '#64748b', fontSize: 12 }}>
-                            Identified via technical term regex match
+                          <span style={{ color: 'var(--color-text-muted)', fontSize: 12 }}>
+                            Identified via technical entity recognition
                           </span>
                         )}
                       </td>
@@ -621,7 +759,7 @@ Additional Skills: ${additional}`;
                 </tbody>
               </table>
             ) : (
-              <p style={{ color: '#64748b', fontSize: 13, marginTop: 8 }}>
+              <p style={{ color: 'var(--color-text-muted)', fontSize: 13, marginTop: 8 }}>
                 No overlapping skills detected between the resume and job requirements.
               </p>
             )}
@@ -652,6 +790,58 @@ Additional Skills: ${additional}`;
               )}
             </div>
           </div>
+
+          {/* Preferred Qualifications Section (If detected) */}
+          {((analysisResult.matched_preferred && analysisResult.matched_preferred.length > 0) ||
+            (analysisResult.missing_preferred_skills && analysisResult.missing_preferred_skills.length > 0)) && (
+            <div className="skills-card">
+              <div className="panel-header">
+                <div>
+                  <h3 className="panel-title">
+                    <Sparkles size={16} style={{ display: 'inline', verticalAlign: 'middle', marginRight: 6, color: 'var(--color-preferred)' }} />
+                    Preferred / Desirable Qualifications
+                  </h3>
+                  <p className="panel-desc">
+                    Secondary skills identified from the 'Nice to Have' or 'Preferred' sections. Matched preferred skills provide bonus score points.
+                  </p>
+                </div>
+                <span className="limit-badge" style={{ color: 'var(--color-preferred)', background: 'var(--color-preferred-light)' }}>
+                  {analysisResult.matched_preferred?.length || 0} Evidenced
+                </span>
+              </div>
+
+              {analysisResult.matched_preferred && analysisResult.matched_preferred.length > 0 && (
+                <div style={{ marginBottom: 12 }}>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-secondary)', marginBottom: 6 }}>
+                    Evidenced Preferred Skills:
+                  </div>
+                  <div className="skills-grid">
+                    {analysisResult.matched_preferred.map((item, idx) => (
+                      <span key={idx} className="skill-pill preferred">
+                        <CheckCircle2 size={14} />
+                        <span>{item.skill}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {analysisResult.missing_preferred_skills && analysisResult.missing_preferred_skills.length > 0 && (
+                <div>
+                  <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--color-text-muted)', marginBottom: 6 }}>
+                    Un-evidenced Preferred Skills:
+                  </div>
+                  <div className="skills-grid">
+                    {analysisResult.missing_preferred_skills.map((skill, idx) => (
+                      <span key={idx} className="skill-pill additional">
+                        <span>{skill}</span>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Additional Skills */}
           {analysisResult.additional_skills.length > 0 && (
@@ -701,7 +891,7 @@ Additional Skills: ${additional}`;
 
           {/* Quality Warnings */}
           {analysisResult.warnings.length > 0 && (
-            <div className="alert-warning">
+            <div className="alert-warning" role="note">
               <b>Quality & Extraction Notes:</b>
               <ul style={{ paddingLeft: 18, marginTop: 4 }}>
                 {analysisResult.warnings.map((w, idx) => (

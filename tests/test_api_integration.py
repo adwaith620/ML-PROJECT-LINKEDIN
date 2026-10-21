@@ -62,14 +62,19 @@ class TestApiIntegration(unittest.TestCase):
         self.assertGreaterEqual(json_data["overall_score"], 0.0)
         self.assertLessEqual(json_data["overall_score"], 100.0)
 
-        # Check matched skills
-        matched = [m["skill"] for m in json_data["matched_skills"]]
-        self.assertIn("python", matched)
-        self.assertIn("fastapi", matched)
-        self.assertIn("docker", matched)
+        # Check matched skills (normalized to lower for robust assertion)
+        matched_lower = [m["skill"].lower() for m in json_data["matched_skills"]]
+        self.assertIn("python", matched_lower)
+        self.assertIn("fastapi", matched_lower)
+        self.assertIn("docker", matched_lower)
 
-        # Kubernetes was not in resume
-        self.assertIn("kubernetes", json_data["missing_required_skills"])
+        # Kubernetes was matched via related skill Docker or in missing
+        exact_matches = [m["skill"].lower() for m in json_data["matched_skills"] if not m.get("is_related")]
+        self.assertNotIn("kubernetes", exact_matches)
+        
+        # PostgreSQL was in Nice to Have (preferred)
+        preferred_matched = [p["skill"].lower() for p in json_data.get("matched_preferred", [])]
+        self.assertIn("postgresql", preferred_matched)
 
     def test_analyze_missing_jd_fails(self):
         resume_bytes = b"Some resume content"

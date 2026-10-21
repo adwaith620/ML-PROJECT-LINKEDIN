@@ -2,7 +2,7 @@
 
 **Project:** Resume Screening & Skill Gap Analysis System (TalentLens)  
 **Architecture Pattern:** Client-Server Monorepo with Modular NLP/ML Processing Engine  
-**Release Version:** 1.0.0  
+**Release Version:** 1.1.0  
 
 ---
 
@@ -11,11 +11,11 @@
 ```text
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                             INTERVIEWER BROWSER                             │
-│                  Vite + React 19 + TypeScript Application                   │
+│       Vite + React 19 + TypeScript + WCAG 2.2 AA Accessible Dark Mode       │
 │                                                                             │
 │  ┌───────────────────────┐  ┌──────────────────────┐  ┌──────────────────┐  │
-│  │ Resume Upload Panel   │  │ Job Description Panel│  │ Method Selector  │  │
-│  │ (Drag & Drop / Pick)  │  │ (Paste / File Upload)│  │ (Hybrid/S-BERT)  │  │
+│  │ Resume Upload Panel   │  │ Job Description Panel│  │ Theme Controller │  │
+│  │ (Drag & Drop / Pick)  │  │ (Paste / File Upload)│  │ (Light / Dark)   │  │
 │  └───────────┬───────────┘  └──────────┬───────────┘  └────────┬─────────┘  │
 └──────────────┼─────────────────────────┼───────────────────────┼────────────┘
                │ Multipart Form Data     │                       │
@@ -43,75 +43,73 @@
 │     (src/preprocessing/text_cleaner.py)                        │            │
 │     - Preserves C++, C#, .NET, Node.js, Python 3, CI/CD        │            │
 │                                                                │            │
-│  3. Skill & Entity Extraction                                  │            │
-│     (src/skill_extraction/extractor.py & rule_based.py)        │            │
-│     - Regex word boundary dictionary matching                  │            │
-│     - Canonical alias resolution (k8s -> kubernetes)           │            │
+│  3. JD Section Parsing (Required vs. Preferred)                │            │
+│     (src/skill_extraction/jd_parser.py)                        │            │
+│     - Distinguishes Required, Preferred, and Contextual skills │            │
 │                                                                │            │
-│  4. Genuine Text Evidence Extraction                           │            │
-│     - Sentence-level extraction from candidate resume          │            │
+│  4. Centralized Taxonomy & Aliases                             │            │
+│     (src/skill_extraction/skill_dictionary.py)                 │            │
+│     - Canonical master taxonomy (200+ tech skills & aliases)   │            │
+│     - Transferable domain relations (PostgreSQL <-> MySQL)     │            │
 │                                                                │            │
-│  5. Multi-Modal Similarity Matching                            │            │
+│  5. Multi-Tier Match Classification & Prioritized Evidence     │            │
+│     (src/skill_extraction/match_classifier.py)                 │            │
+│     - Exact match, Recognized alias, Related skill (transfer)  │            │
+│     - Prioritizes Work Experience -> Projects -> Education     │            │
+│                                                                │            │
+│  6. Multi-Modal Similarity Matching                            │            │
 │     - Classical: TF-IDF Cosine Similarity (baseline.py)        │            │
 │     - Semantic: Sentence-BERT all-MiniLM-L6-v2 (sentence_bert)│            │
 │                                                                │            │
-│  6. Skill Gap & Candidate Scoring                              │            │
-│     (src/scoring/skill_gap.py & candidate_score.py)            │            │
-│     - Matched skills, missing required skills, additional      │            │
-│     - Weighted formula + recommendation tier                   │            │
+│  7. Skill Gap & Candidate Scoring                              │            │
+│     (src/scoring/candidate_score.py)                           │            │
+│     - Transparent breakdown, explicit denominator, bonus       │            │
 │                                                                │            │
-│  7. Professional Report Generation ────────────────────────────┘            │
-│     (backend/pdf_generator.py via ReportLab)                                │
+│  8. Formatted PDF Report Generator                             │            │
+│     (backend/pdf_generator.py)                                 │            │
+│     - Professional vector PDF matching online dashboard        │            │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. Directory Structure and Boundaries
+## 2. Directory and Module Organization
 
 ```text
-ML-PROJECT-LINKEDIN/
-├── backend/                      # FastAPI application backend
-│   ├── main.py                   # API routes, CORS, multipart ingest
-│   └── pdf_generator.py          # ReportLab PDF report generation
-│
-├── frontend/                     # React + TypeScript frontend
+ML-PROJECT/
+├── backend/                  # FastAPI web server and PDF export
+│   ├── main.py               # REST API endpoints & CORS configuration
+│   └── pdf_generator.py      # Multi-tier ReportLab PDF generator
+├── frontend/                 # React 19 + TypeScript frontend
 │   ├── src/
-│   │   ├── App.tsx               # Main workspace, dropzones, report viewer
-│   │   ├── main.tsx              # React DOM entry point
-│   │   ├── types.ts              # API TypeScript interfaces
-│   │   └── styles.css            # Professional B2B CSS design system
-│   ├── index.html                # HTML entry template
-│   ├── package.json              # Frontend scripts and dependencies
-│   ├── tsconfig.json             # TypeScript compiler settings
-│   └── vite.config.ts            # Vite build and proxy config
-│
-├── src/                          # Core Machine Learning & NLP modules
-│   ├── resume_parser/            # Document parsing (PDF, DOCX, TXT) & limits
-│   ├── preprocessing/            # Text normalization, token preservation
-│   ├── skill_extraction/         # Taxonomy dictionary, alias mapping, NER
-│   ├── matching/                 # TF-IDF baseline & Sentence-BERT matcher
-│   ├── scoring/                  # Skill gap analysis, weighted scoring
-│   ├── evaluation/               # Metrics, explanation generator, leakage
-│   └── pipeline.py               # Unified end-to-end orchestration pipeline
-│
-├── models/                       # Model artifacts and feature extractors
-│   ├── baseline_feature_extractor.joblib  # Fitted TF-IDF vectorizer
-│   └── baseline_model_lr.joblib           # Trained Logistic Regression model
-│
-├── tests/                        # 52 Automated unit and integration tests
-├── docs/                         # Architecture, scoring, limits, EXAI audit
-├── requirements.txt              # Backend and ML dependencies
-└── run_local.bat                 # One-click Windows launch script
+│   │   ├── App.tsx           # Main workspace, results dashboard, dark theme
+│   │   ├── styles.css        # WCAG 2.2 AA compliant CSS design tokens
+│   │   └── types.ts          # Complete TypeScript interfaces
+│   └── package.json
+├── src/                      # Core Machine Learning & NLP pipeline
+│   ├── preprocessing/        # Document text cleaning & token preservation
+│   ├── resume_parser/        # Multi-format ingestion (PDF, DOCX, TXT)
+│   ├── skill_extraction/     # Taxonomy, JD parser, classifier & evidence
+│   │   ├── skill_dictionary.py   # Centralized canonical taxonomy & aliases
+│   │   ├── jd_parser.py          # Section-aware JD segmentation
+│   │   ├── match_classifier.py   # Multi-tier classification & evidence
+│   │   ├── rule_based.py         # Boundary-safe regex extraction
+│   │   └── normalization.py      # Canonical normalization
+│   ├── matching/             # TF-IDF & Sentence-BERT embedding matchers
+│   ├── scoring/              # Weighted score aggregation & config
+│   └── pipeline.py           # Unified end-to-end execution pipeline
+├── tests/                    # 67 unit & integration tests (100% pass)
+└── docs/                     # Comprehensive engineering documentation
 ```
 
 ---
 
-## 3. Data Flow & Security Considerations
+## 3. UI/UX & Dark Mode Design System
 
-1. **Transient Processing:** No candidate resumes or job descriptions are permanently written to persistent database records. All uploads are processed in temporary memory or bounded temporary disk buffers that are automatically discarded upon request completion.
-2. **Defensive Parsing:**
-   - PDF page count checked prior to text decompression.
-   - Decompressed XML archives in DOCX files inspected for path traversal and compression bomb characteristics.
-   - Strict size caps prevent memory exhaustion attacks.
-3. **No External Cloud AI Dependencies:** All embeddings, TF-IDF vectors, and rule-based matches execute entirely on the local CPU or machine hardware without transmitting sensitive candidate resumes to external third-party LLM APIs.
+- **Design Philosophy:** Clean, institutional engineering console avoiding neon accents or harsh pitch-black backgrounds.
+- **Accessibility:** Fully compliant with WCAG 2.2 AA contrast standards ($\ge 4.5:1$ for normal body text, $\ge 3:1$ for headers and UI component boundaries).
+- **Design Tokens:**
+  - Light mode: Surface `#ffffff`, Background `#f8fafc`, Primary text `#0f172a`.
+  - Dark mode: Surface `#1e293b` (slate 800), Background `#0b0f19` (rich slate navy), Primary text `#f8fafc`.
+  - Match pills: Exact (`emerald`), Related (`purple/indigo`), Missing (`amber`), Preferred (`sky/cyan`).
+- **Persistence:** User theme preferences persist via `localStorage` with system `prefers-color-scheme` fallback.

@@ -1,0 +1,24 @@
+Senior Python Backend Engineer
+
+Company Overview:
+NexGen FinTech is a high-growth financial technology company modernizing digital transactions and global payments. We are looking for an exceptional Senior Backend Engineer to join our core platform engineering group.
+
+Key Responsibilities:
+- Design, build, and deploy high-performance backend microservices and public-facing REST APIs.
+- Collaborate with frontend and infrastructure engineers to build resilient, fault-tolerant distributed systems.
+- Own technical design and operational excellence for critical transaction processing pipelines.
+- Write clean, maintainable, self-documenting code with comprehensive unit and integration tests.
+
+Required Qualifications:
+- 4+ years of professional backend engineering experience with Python.
+- Proven track record building robust RESTful microservices with modern frameworks such as FastAPI.
+- Strong hands-on experience with relational databases, database modeling, and query optimization using MySQL or PostgreSQL.
+- Proficiency in containerization with Docker and container workflows.
+- Solid understanding of Git version control and modern CI/CD deployment pipelines.
+- Deep understanding of SQL and relational database transactions.
+
+Preferred Qualifications (Nice to Have):
+- Experience orchestrating containerized services using Kubernetes.
+- Practical experience with public cloud infrastructure, preferably AWS.
+- Hands-on experience with in-memory datastores and caching solutions such as Redis.
+- Familiarity with event-driven architectures and message brokers.

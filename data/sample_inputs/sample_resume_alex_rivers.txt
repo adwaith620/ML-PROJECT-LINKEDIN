@@ -1,0 +1,44 @@
+Alex Rivers
+Senior Software Engineer
+San Francisco, CA | alex.rivers@email.com | (555) 019-2834 | linkedin.com/in/alexrivers-dev | github.com/alexrivers
+
+PROFESSIONAL SUMMARY
+Results-driven Senior Backend Engineer with 5+ years of experience building high-throughput distributed systems, scalable REST APIs, and asynchronous data processing pipelines. Demonstrated expertise in Python, FastAPI, Docker, and PostgreSQL. Experienced in cloud-native deployments, CI/CD automation, and relational database optimization.
+
+CORE TECHNICAL SKILLS
+Languages: Python, SQL, JavaScript, Bash
+Backend Frameworks: FastAPI, Flask, Django
+Databases & Storage: PostgreSQL, Redis, SQLite
+Infrastructure & DevOps: Docker, Docker Compose, CI/CD (GitHub Actions), Linux, Git
+Architecture: Microservices, RESTful APIs, Event-Driven Architecture, Asynchronous Programming
+
+PROFESSIONAL EXPERIENCE
+
+Senior Backend Developer | CloudScale Solutions (2022 - Present)
+- Designed and maintained asynchronous microservices using FastAPI and Python, handling over 25,000 requests per second with sub-40ms P99 latency.
+- Architected relational database schemas and optimized complex SQL queries in PostgreSQL, reducing query execution times by 45%.
+- Implemented background task workers using Redis and Celery to process heavy data ingestion pipelines asynchronously.
+- Containerized multi-service application environments using Docker and Docker Compose, establishing unified development and staging parity.
+- Maintained automated CI/CD pipelines via GitHub Actions to run linting, unit testing, and automated security scans on every pull request.
+
+Backend Software Engineer | DataPulse Technologies (2019 - 2022)
+- Built robust RESTful APIs in Python using Flask and Django to power customer-facing dashboards.
+- Integrated PostgreSQL databases with automated migration management using Alembic.
+- Collaborated in cross-functional agile teams to deliver end-to-end features, writing unit and integration tests with pytest achieving 88% code coverage.
+- Automated daily backup scripts and server health monitoring using Bash and Linux cron jobs.
+
+PROJECTS
+
+Distributed Task Queue Monitor
+- Open-source monitoring tool for distributed task processing built with Python and FastAPI.
+- Implemented real-time WebSocket metric broadcasting and Redis pub/sub channels.
+- Fully containerized using Docker with multi-stage build optimization reducing image footprint to under 120MB.
+
+EDUCATION & CERTIFICATIONS
+
+Bachelor of Technology (B.Tech) in Computer Science
+State University | Graduated with Honors (2019)
+
+Certifications:
+- Certified Docker Associate
+- Advanced Python Architecture Specialist

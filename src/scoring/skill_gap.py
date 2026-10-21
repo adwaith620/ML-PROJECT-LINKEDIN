@@ -1,20 +1,25 @@
 """
+skill_gap.py
+
 Module for Skill Gap Analysis.
 Handles skill normalization, and calculates matched, missing, and extra skills.
+Uses centralized taxonomy aliases.
 """
 from typing import List, Dict, Set, Any
-from .config import SKILL_NORMALIZATION_MAP
+from src.skill_extraction.skill_dictionary import ALIAS_MAP
 
 def normalize_skill(skill: str) -> str:
     """
     Normalize a skill string to lower-case, stripped, and mapped 
-    through a controlled dictionary to resolve abbreviations.
+    through the centralized alias dictionary.
     """
     if not skill or not isinstance(skill, str):
         return ""
         
     s_clean = skill.strip().lower()
-    return SKILL_NORMALIZATION_MAP.get(s_clean, s_clean)
+    if s_clean in ALIAS_MAP:
+        return ALIAS_MAP[s_clean].lower()
+    return s_clean
 
 def analyze_skill_gap(candidate_skills: List[str], required_skills: List[str], optional_skills: List[str] = None) -> Dict[str, Any]:
     """
@@ -25,7 +30,7 @@ def analyze_skill_gap(candidate_skills: List[str], required_skills: List[str], o
     - matched_optional: Skills the candidate has that are optional.
     - missing_required: Required skills the candidate lacks.
     - missing_optional: Optional skills the candidate lacks.
-    - additional: Skills the candidate has that were not required or optional.
+    - additional_skills: Skills the candidate has that were not required or optional.
     - match_percentage: (matched_required / total_required) * 100
     """
     optional_skills = optional_skills or []
@@ -44,7 +49,7 @@ def analyze_skill_gap(candidate_skills: List[str], required_skills: List[str], o
     
     additional = cand_set.difference(req_set).difference(opt_set)
     
-    # Calculate match percentage (handle edge case where no required skills are defined)
+    # Calculate match percentage
     if not req_set:
         match_percentage = 100.0 if cand_set else 0.0
     else:
