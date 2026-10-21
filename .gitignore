@@ -76,6 +76,8 @@ dist/
 build/
 *.egg-info/
 *.egg
+frontend/dist/
+frontend/node_modules/
 
 # =========================
 # Logs & Temp
@@ -84,3 +86,6 @@ build/
 logs/
 tmp/
 temp/
+uploads/
+*.pdf
+

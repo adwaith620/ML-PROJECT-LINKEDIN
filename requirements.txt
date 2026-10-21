@@ -21,3 +21,12 @@ nltk
 # Visualization
 matplotlib
 seaborn
+
+# Backend & Document Processing
+fastapi
+uvicorn
+python-multipart
+pypdf
+python-docx
+reportlab
+
