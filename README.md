@@ -1,11 +1,17 @@
-# Resume Screening and Skill Gap Analysis
+# TalentLens — Resume Screening and Skill Gap Analysis System
 
-**Project Type:** BTech Computer Science and AI Academic Project (2026–27)
-**Repository:** `250529-dotcom/ML-PROJECT-LINKEDIN`
+**Project Type:** BTech Computer Science & AI Academic Project (2026–27)  
+**System Name:** TalentLens  
+**Repository:** `adwaith620/ML-PROJECT-LINKEDIN`  
+**Current Active Branch:** `feature/final-web-application`  
+
+---
 
 ## 1. Project Objective
 
-The objective of this project is to build a machine learning system that compares resumes with job descriptions, extracts relevant skills and information, calculates candidate-job compatibility, identifies skill gaps, and provides interpretable results.
+TalentLens is an end-to-end, privacy-respecting recruitment decision-support system powered by Natural Language Processing (NLP) and Machine Learning. The application parses candidate resumes (PDF, DOCX, TXT), validates document integrity, cleans text while preserving specialized technical tokens (such as `C++`, `C#`, `.NET`, `Node.js`, and `React.js`), extracts technical competencies, compares them against employer job descriptions, conducts structured skill gap analyses, and calculates objective, multi-modal compatibility scores with sentence-level textual evidence.
+
+---
 
 ## 2. Team Members
 
@@ -15,166 +21,193 @@ The objective of this project is to build a machine learning system that compare
 - Siya S
 - Afraaz S M
 
-## 3. Dataset Sources
+---
 
-The project primarily utilizes datasets hosted on Hugging Face. 
-
-1. **EXAI-ResumeIntel**  
-   [https://huggingface.co/datasets/mithinsagar/exai-resumeintel-data](https://huggingface.co/datasets/mithinsagar/exai-resumeintel-data)  
-   Contains a resume dataset and a large job-posting dataset (approximately 1.62 million records in the `job_postings` configuration).
-
-2. **Resume-Job Fit Merged v1**  
-   [https://huggingface.co/datasets/med2425/resume-job-fit-merged-v1](https://huggingface.co/datasets/med2425/resume-job-fit-merged-v1)
-
-3. **Resume NER Training Data**  
-   [https://huggingface.co/datasets/yashpwr/resume-ner-training-data](https://huggingface.co/datasets/yashpwr/resume-ner-training-data)
-
-*Note: Final dataset selection, preprocessing procedures, compatibility resolution, data leakage checks, and the construction of reproducible train/validation/test splits will be determined during the Dataset Engineering phase. There is no guarantee that all listed datasets will be used in the final model training.*
-
-## 4. Project Pipeline
+## 3. System Architecture & Pipeline Flow
 
 ```text
-Resume / Job Description
-        |
-        v
-Text extraction and preprocessing
-        |
-        v
-Information and skill extraction
-        |
-        v
-Skill normalization
-        |
-        v
-Semantic representation
-        |
-        v
-Resume-Job matching
-        |
-        v
-Feature engineering
-        |
-        v
-Candidate-job scoring
-        |
-        v
-Skill-gap analysis
-        |
-        v
-Explainable results
-        |
-        v
-Web application
+Candidate Resume (PDF/DOCX/TXT) + Job Description
+                      │
+                      ▼
+[Phase 2 Parser] Document Validation & Size Constraints (25MB Resume / 10MB JD / 100 Pages)
+                      │
+                      ▼
+[Phase 2 NLP] Text Cleaning & Normalization (Preserving C++, C#, .NET, Node.js, React.js)
+                      │
+                      ▼
+[Phase 3 Extraction] Skill Taxonomy & Canonical Alias Resolution (k8s -> kubernetes)
+                      │
+                      ▼
+[Phase 3 Evidence] Non-Fabricated Sentence Evidence Snippet Extraction from Resume
+                      │
+                      ▼
+[Phase 4 & 5 Matching] Multi-Modal Similarity Engine:
+   ├── Classical TF-IDF Cosine Distance (BaselineFeatureExtractor)
+   └── Sentence-BERT all-MiniLM-L6-v2 Dense Semantic Similarity
+                      │
+                      ▼
+[Phase 6 Scoring] Weighted Scoring & Skill Gap Analysis:
+   ├── Matched Required Skills Coverage
+   ├── Missing / Unevidenced Required Skills
+   └── Additional Unsolicited Competencies
+                      │
+                      ▼
+[Phase 6 UI & Export] Professional Web Application & ReportLab PDF Export
 ```
 
-## 5. Model Development
+---
 
-The project establishes simple baselines before progressing to more complex models. Model selection will be strictly based on empirical evaluation results.
+## 4. Reused & Verified Machine Learning Components
 
-Planned experimentation includes:
-- TF-IDF and cosine similarity baselines
-- Classical machine learning baselines where appropriate
-- Sentence-BERT / sentence-transformer embeddings
-- Hybrid models combining semantic and structured features
-- Skill-gap analysis frameworks
-- Explainability methods (e.g., LIME, SHAP) where appropriate
+All foundational research from the project's historical phases has been integrated into the production pipeline:
+- **Phase 1 (Dataset Exploration):** Research schemas and distributions documented in `docs/dataset_report.md`.
+- **Phase 2 (Text Preprocessing):** Unicode NFKD normalization, whitespace control, and punctuation-safe regex in `src/preprocessing/text_cleaner.py`.
+- **Phase 3 (Skill Extraction):** Entity extraction dictionary and alias resolution in `src/skill_extraction/`.
+- **Phase 4 (Classical Baseline):** Pre-trained `BaselineFeatureExtractor` (`models/baseline_feature_extractor.joblib`) and TF-IDF cosine distance in `src/matching/baseline.py`.
+- **Phase 5 (Sentence-BERT Matching):** Dense semantic representation using `all-MiniLM-L6-v2` with bounded document chunking in `src/matching/sentence_bert.py`.
+- **Phase 6 (Scoring & Ranking):** Skill gap calculus and weighted scoring in `src/scoring/`.
+- **Phase 7 (Evaluation & Transparency):** Metric calculators and non-generative score explanation templates in `src/evaluation/`.
 
-## 6. Project Phases
+---
 
-- **Phase 0 — Project Setup:** Repository structure, Git workflow, dependencies, documentation, data/model storage strategy.
-- **Phase 1 — Dataset Engineering:** Inspect datasets, compare schemas, analyze missing values and duplicates, analyze labels and class distributions, check for data leakage, construct reproducible train/validation/test datasets.
-- **Phase 2 — Resume NLP:** Resume parsing, text preprocessing, information extraction, skill extraction, skill normalization.
-- **Phase 3 — Semantic Matching:** Implement baseline matching, generate sentence embeddings, evaluate semantic similarity, compare baseline and transformer-based approaches.
-- **Phase 4 — Scoring and Explainability:** Feature engineering, candidate-job scoring, skill-gap detection, explainable results, model evaluation.
-- **Phase 5 — Application:** Backend API, frontend interface, resume upload, job-description input, result visualization.
-- **Phase 6 — Integration:** Connect model to backend, connect backend to frontend, end-to-end testing.
-- **Phase 7 — Final Evaluation:** Evaluate on an untouched test set, compare model variants, analyze failure cases, document limitations, prepare final report and presentation.
+## 5. Scoring Methodology
 
-## 7. Repository Structure
+The overall compatibility score $S \in [0.0, 100.0]$ is computed as:
 
+$$S_{\text{overall}} = w_{\text{skill}} \cdot S_{\text{skill}} + w_{\text{baseline}} \cdot S_{\text{baseline}} + w_{\text{semantic}} \cdot S_{\text{semantic}}$$
+
+### Configurable Weights
+- **Sentence-BERT + Classical Hybrid (Default):**
+  - Structured Skill Coverage: **40%**
+  - Baseline TF-IDF Similarity: **20%**
+  - Sentence-BERT Semantic Similarity: **40%**
+- **Classical Baseline Fallback (Offline Mode):**
+  - Structured Skill Coverage: **60%**
+  - Baseline TF-IDF Similarity: **40%**
+  - Semantic Similarity: **0%**
+
+### Categorical Fit Thresholds
+- **80.0% – 100.0%:** Strong Match
+- **60.0% – 79.9%:** Moderate Match
+- **40.0% – 59.9%:** Potential Match
+- **0.0% – 39.9%:** Low Match
+
+For complete mathematical definitions and edge-case handling, see [`docs/scoring_methodology.md`](docs/scoring_methodology.md).
+
+---
+
+## 6. Document Constraints & Upload Limits
+
+Enforced continuously at the frontend, multipart HTTP handler, document parsers, and NLP text buffers:
+- **Resume File Size:** Max 25 MB ($26,214,400$ bytes)
+- **Job Description File Size:** Max 10 MB ($10,485,760$ bytes)
+- **PDF Page Count:** Max 100 pages (verified before full text extraction)
+- **Extracted Plain Text:** Max 5 MB UTF-8 text
+- **Supported Formats:** PDF (`.pdf`), Microsoft Word (`.docx`), Plain Text (`.txt`)
+
+For complete details on enforcement points, see [`docs/file_upload_limits.md`](docs/file_upload_limits.md).
+
+---
+
+## 7. Explainable AI (EXAI) Feasibility Research
+
+As per architectural assessment, Explainable AI was **researched for feasibility rather than implemented as a generative subsystem**.
+- Investigated resource: `mithinsagar/exai-resumeintel-data` on Hugging Face.
+- **Finding:** Programmatic analysis revealed that `mithinsagar/exai-resumeintel-data` contains zero explainability ground truth, rationale labels, or paired alignment.
+- **Decision:** The system implements **intrinsic, deterministic transparency**: every matched skill displays genuine sentence evidence quotes from the resume, missing skills are explicitly labeled as unevidenced, and the exact mathematical score contribution of every component is inspectable.
+
+Read the complete 10-point research paper in [`docs/exai_feasibility_report.md`](docs/exai_feasibility_report.md).
+
+---
+
+## 8. Installation & Setup
+
+### Prerequisites
+- **Python 3.11+** with `pip`
+- **Node.js v18+** with `npm`
+
+### 1. Install Backend Dependencies
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Install Frontend Dependencies
+```bash
+cd frontend
+npm install
+cd ..
+```
+
+---
+
+## 9. Running the Application Locally
+
+### Method A: One-Click Windows Launch Script (Recommended)
+Simply double-click or run:
+```cmd
+run_local.bat
+```
+This automatically verifies Python and Node.js versions, starts the FastAPI backend and Vite frontend, and displays the local URLs.
+
+### Method B: Separate Services
+
+**Terminal 1 — Backend API:**
+```cmd
+python -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
+```
+
+**Terminal 2 — Frontend UI:**
+```cmd
+cd frontend
+npm run dev
+```
+
+### Local Application Endpoints
+- **Frontend Web UI:** [http://127.0.0.1:5173](http://127.0.0.1:5173)
+- **Backend API Docs (Swagger):** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
+- **API Health Check:** [http://127.0.0.1:8000/api/health](http://127.0.0.1:8000/api/health)
+- **Runtime Configuration:** [http://127.0.0.1:8000/api/config](http://127.0.0.1:8000/api/config)
+
+---
+
+## 10. Testing & Verification
+
+Run the full automated test suite (52 unit and integration tests):
+```cmd
+python -m pytest
+```
+
+### Test Suite Results (100% Passing)
 ```text
-ML-PROJECT-LINKEDIN/
-│
-├── README.md                 # Project documentation
-├── requirements.txt          # Python dependencies
-├── .gitignore                # Ignored files (data, models, envs)
-│
-├── data/                     # Local data directory (contents ignored by Git)
-│   └── README.md             # Data access instructions
-│
-├── notebooks/                # Jupyter notebooks for EDA and prototyping
-│
-├── src/                      # Core source code modules
-│   ├── preprocessing/        # Data cleaning and text formatting
-│   ├── resume_parser/        # Parsing logic for various document types
-│   ├── skill_extraction/     # NER and rule-based skill identification
-│   ├── matching/             # Semantic embedding and similarity logic
-│   ├── scoring/              # Overall fit calculation algorithms
-│   ├── explainability/       # Interpretability modules for model decisions
-│   └── evaluation/           # Testing metrics and benchmark scripts
-│
-├── models/                   # Local model storage (contents ignored by Git)
-│   └── README.md             # Model access instructions
-│
-├── backend/                  # API server implementation
-├── frontend/                 # Web interface implementation
-├── tests/                    # Unit and integration tests
-└── docs/                     # Additional project documentation
+tests\test_api_integration.py ......                                     [ 11%]
+tests\test_evaluation.py ......                                          [ 23%]
+tests\test_matching.py ...                                               [ 28%]
+tests\test_preprocessing.py .......                                      [ 42%]
+tests\test_resume_parser.py ..........                                   [ 61%]
+tests\test_scoring.py ......                                             [ 73%]
+tests\test_sentence_bert.py .....                                        [ 82%]
+tests\test_skill_extraction.py .........                                 [100%]
+
+======================= 52 passed in 19.69s =======================
 ```
 
-## 8. Data and Model Storage
+Detailed test logs and boundary verification are recorded in [`docs/testing_report.md`](docs/testing_report.md).
 
-- GitHub stores only source code, Jupyter notebooks, documentation, and configuration files.
-- Large raw datasets **must not** be committed to GitHub.
-- Large model weights **must not** be committed to GitHub.
-- Hugging Face or other appropriate external storage will be used to host and retrieve large datasets and model artifacts.
-- The EXAI-ResumeIntel job-posting corpus is extremely large (~1.62 million records) and should be accessed programmatically rather than downloaded completely into the local repository.
+---
 
-## 9. Collaboration Workflow
+## 11. Privacy & Data Handling
 
-The project utilizes a feature-branch Git workflow based off the `main` branch:
+- **Zero Permanent Storage:** Resumes, job descriptions, and extracted texts are never permanently saved to database disks.
+- **Safe Memory Processing:** Documents are processed in-memory or in strictly isolated temporary buffers and discarded immediately after report generation.
+- **Local Inference:** All calculations execute locally; personal identifiable information (PII) is never transmitted to external third-party AI APIs.
 
-```text
-main
- ├── feature/dataset-engineering
- ├── feature/resume-nlp
- ├── feature/semantic-matching
- ├── feature/scoring-xai
- └── feature/platform
-```
+---
 
-Team members must:
-1. Work on appropriate feature branches.
-2. Commit changes logically.
-3. Push branches to GitHub.
-4. Open Pull Requests (PRs) to merge reviewed work into `main`.
+## 12. Documentation Index
 
-## 10. Local Setup
-
-Instructions for setting up the environment on Windows:
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/250529-dotcom/ML-PROJECT-LINKEDIN.git
-   cd ML-PROJECT-LINKEDIN
-   ```
-
-2. **Create a Python virtual environment:**
-   ```bash
-   python -m venv venv
-   ```
-
-3. **Activate the virtual environment (Windows):**
-   ```bash
-   .\venv\Scripts\activate
-   ```
-
-4. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-## 11. Current Status
-
-- **Phase 0 — Project Setup:** Complete
-- **Phase 1 — Dataset Engineering:** Next
+- [`docs/implementation_audit.md`](docs/implementation_audit.md) — Comprehensive pre-integration audit of all project branches and commits.
+- [`docs/architecture.md`](docs/architecture.md) — System specifications, component topology, and data flow.
+- [`docs/scoring_methodology.md`](docs/scoring_methodology.md) — Mathematical formulas, weights, and recommendation categories.
+- [`docs/file_upload_limits.md`](docs/file_upload_limits.md) — Multi-tier upload limits and DoS defense boundaries.
+- [`docs/exai_feasibility_report.md`](docs/exai_feasibility_report.md) — Detailed research report on EXAI and `mithinsagar/exai-resumeintel-data`.
+- [`docs/testing_report.md`](docs/testing_report.md) — Verification report across all 52 automated tests.
