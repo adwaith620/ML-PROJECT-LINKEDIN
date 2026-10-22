@@ -6,9 +6,9 @@ TalentLens is an intelligent, easy-to-use recruitment tool built with Machine Le
 
 ## 👥 Team Members
 
-* **Adwaith K**
+* **Adwaith Krishna M H**
 * **Adwaith HA**
-* **Abhinand Js**
+* **Abhinand JS**
 * **Siya S**
 * **Afraaz S M**
 
