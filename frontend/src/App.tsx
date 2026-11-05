@@ -35,10 +35,12 @@ export const App: React.FC = () => {
   const [health, setHealth] = useState<BackendHealth | null>(null);
   const [copyFeedback, setCopyFeedback] = useState<boolean>(false);
 
-  // Light mode is the default; preserve an explicit saved theme choice.
+  // Accessible Dark Mode state with persistence & system preference fallback
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const savedTheme = localStorage.getItem('talentlens_theme');
-    return savedTheme === 'dark';
+    if (savedTheme === 'dark') return true;
+    if (savedTheme === 'light') return false;
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
   const resumeInputRef = useRef<HTMLInputElement>(null);
@@ -54,6 +56,18 @@ export const App: React.FC = () => {
       localStorage.setItem('talentlens_theme', 'light');
     }
   }, [isDarkMode]);
+
+  // Listen for OS system theme changes if user has not set a preference
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleChange = (e: MediaQueryListEvent) => {
+      if (!localStorage.getItem('talentlens_theme')) {
+        setIsDarkMode(e.matches);
+      }
+    };
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
 
   // Check backend health on mount
   useEffect(() => {
@@ -244,12 +258,12 @@ export const App: React.FC = () => {
     const missing = analysisResult.missing_required_skills.join(', ') || 'None';
     const additional = analysisResult.additional_skills.join(', ') || 'None';
 
-    const text = `Candidate Match Summary
+    const text = `Candidate Compatibility Summary
 Candidate File: ${analysisResult.resume_filename}
 Job Description: ${analysisResult.jd_filename}
-Overall Match: ${analysisResult.overall_score}% (${getAlignmentLabel(analysisResult.overall_score)})
+Overall Score: ${analysisResult.overall_score}% (${analysisResult.recommendation})
 Active Method: ${analysisResult.analysis_method}
-Required Skills Found: ${analysisResult.required_skills_matched}/${analysisResult.required_skills_total} (${analysisResult.skill_match_percentage}%)
+Required Skills Coverage: ${analysisResult.required_skills_matched}/${analysisResult.required_skills_total} (${analysisResult.skill_match_percentage}%)
 Matched Skills: ${matched}
 Missing Required Skills: ${missing}
 Additional Skills: ${additional}`;
@@ -277,13 +291,6 @@ Additional Skills: ${additional}`;
       default:
         return 'tag-low';
     }
-  };
-
-  const getAlignmentLabel = (score: number) => {
-    if (score >= 80) return 'Strong alignment';
-    if (score >= 60) return 'Moderate alignment';
-    if (score >= 40) return 'Potential alignment';
-    return 'Low alignment';
   };
 
   const formatFileSize = (bytes: number): string => {
@@ -336,7 +343,9 @@ Additional Skills: ${additional}`;
           <div className="header-status">
             <div className={`status-dot ${health?.status === 'healthy' ? 'active' : ''}`} />
             <span>
-              {health?.status === 'healthy' ? 'AI analysis ready' : 'Connecting to analysis service'}
+              {health?.status === 'healthy'
+                ? `Local Engine (${health.models.sentence_bert.ready ? 'Sentence-BERT Active' : 'TF-IDF Baseline'})`
+                : 'Connecting to Engine...'}
             </span>
           </div>
         </div>
@@ -358,7 +367,7 @@ Additional Skills: ${additional}`;
             <div className="panel-card">
               <div className="panel-header">
                 <div>
-                  <h2 className="panel-title">Candidate resume</h2>
+                  <h2 className="panel-title">1. Candidate Resume</h2>
                   <p className="panel-desc">Upload candidate resume in PDF, DOCX, or TXT format.</p>
                 </div>
                 <span className="limit-badge">Max 25 MB • 100 pgs</span>
@@ -378,7 +387,7 @@ Additional Skills: ${additional}`;
                       resumeInputRef.current?.click();
                     }
                   }}
-                  aria-label="Upload candidate resume"
+                  aria-label="Upload Candidate Resume"
                 >
                   <Upload className="dropzone-icon" size={32} />
                   <p className="dropzone-text">Click to browse or drag and drop resume</p>
@@ -420,7 +429,7 @@ Additional Skills: ${additional}`;
             <div className="panel-card">
               <div className="panel-header">
                 <div>
-                  <h2 className="panel-title">Job description</h2>
+                  <h2 className="panel-title">2. Job Description</h2>
                   <p className="panel-desc">Paste the job posting text or upload a job document.</p>
                 </div>
                 <span className="limit-badge">Max 10 MB</span>
@@ -511,7 +520,7 @@ Additional Skills: ${additional}`;
               onClick={handleAnalyze}
             >
               <Layers size={16} />
-              <span>{loading ? 'Analysing...' : 'Analyse match'}</span>
+              <span>{loading ? 'Analyzing...' : 'Analyse Compatibility'}</span>
             </button>
           </div>
 
@@ -534,7 +543,7 @@ Additional Skills: ${additional}`;
           {/* Action Header */}
           <div className="report-action-header">
             <div className="report-title-group">
-              <h2>Candidate match report</h2>
+              <h2>Candidate Evaluation Report</h2>
               <p>
                 Resume: <b>{analysisResult.resume_filename}</b> vs. <b>{analysisResult.jd_filename}</b>
               </p>
@@ -549,13 +558,13 @@ Additional Skills: ${additional}`;
                 <FileText size={15} />
                 <span>Export JSON</span>
               </button>
-              <button className="btn-secondary" onClick={handleCopySummary} title="Copy match summary">
+              <button className="btn-secondary" onClick={handleCopySummary} title="Copy Summary Text">
                 <Copy size={15} />
-                <span>{copyFeedback ? 'Copied!' : 'Copy summary'}</span>
+                <span>{copyFeedback ? 'Copied!' : 'Copy Summary'}</span>
               </button>
               <button className="btn-primary" onClick={handleReset}>
                 <RotateCcw size={15} />
-                <span>Analyse another candidate</span>
+                <span>Analyze Another Candidate</span>
               </button>
             </div>
           </div>
@@ -563,26 +572,16 @@ Additional Skills: ${additional}`;
           {/* Overview Card */}
           <div className="score-overview-card">
             <div className="score-visual-pane">
-              <div
-                className="score-ring"
-                role="img"
-                aria-label={`Overall match ${analysisResult.overall_score.toFixed(1)} percent`}
-                style={{ background: `conic-gradient(var(--color-accent) ${Math.min(100, Math.max(0, analysisResult.overall_score))}%, var(--color-surface-alt) 0)` }}
-              >
-                <div className="score-ring-center">
-                  <span className="score-circle">{analysisResult.overall_score.toFixed(1)}%</span>
-                  <span className="score-ring-caption">Overall match</span>
-                </div>
-              </div>
+              <div className="score-circle">{analysisResult.overall_score.toFixed(1)}%</div>
+              <span className="stat-label">Compatibility Score</span>
               <span className={`score-badge-tag ${getRecommendationTagClass(analysisResult.recommendation)}`}>
-                {getAlignmentLabel(analysisResult.overall_score)}
+                {analysisResult.recommendation}
               </span>
-              <p className="score-meaning">A comparison of resume evidence with the requirements in this job description.</p>
             </div>
 
             <div className="score-details-pane">
               <div className="stat-item">
-                <span className="stat-label">Required skills found</span>
+                <span className="stat-label">Required Skills Coverage</span>
                 <span className="stat-value">
                   {analysisResult.required_skills_matched} of {analysisResult.required_skills_total} ({analysisResult.skill_match_percentage.toFixed(0)}%)
                 </span>
@@ -595,12 +594,12 @@ Additional Skills: ${additional}`;
               </div>
 
               <div className="stat-item">
-                <span className="stat-label">Keyword similarity</span>
+                <span className="stat-label">Lexical Similarity (TF-IDF)</span>
                 <span className="stat-value">{(analysisResult.lexical_similarity * 100).toFixed(1)}%</span>
               </div>
 
               <div className="stat-item">
-                <span className="stat-label">Contextual similarity</span>
+                <span className="stat-label">Semantic Similarity (Sentence-BERT)</span>
                 <span className="stat-value">
                   {analysisResult.semantic_similarity !== null
                     ? `${(analysisResult.semantic_similarity * 100).toFixed(1)}%`
@@ -608,12 +607,14 @@ Additional Skills: ${additional}`;
                 </span>
               </div>
 
+              <div className="stat-item">
+                <span className="stat-label">Active Model Engine</span>
+                <span className="stat-value" style={{ fontSize: 13 }}>
+                  {analysisResult.analysis_method}
+                </span>
+              </div>
             </div>
           </div>
-
-          <p className="decision-note">
-            This is a decision-support estimate, not a hiring decision. A skill not found in the resume may still be part of the candidate’s experience.
-          </p>
 
           {/* Section Parsing Notice */}
           {analysisResult.section_certainty && (
@@ -628,14 +629,9 @@ Additional Skills: ${additional}`;
           )}
 
           {/* Score Component Breakdown Table */}
-          <details className="skills-card technical-details">
-            <summary>
-              <span>
-                <strong>How the score is calculated</strong>
-                <small>Review the matching signals, model, and score contributions.</small>
-              </span>
-            </summary>
-            <p className="technical-model"><b>Analysis method:</b> {analysisResult.analysis_method}</p>
+          <div className="skills-card">
+            <h3 className="panel-title">Score Component Breakdown</h3>
+            <p className="panel-desc">Inspect how each weighted ML component contributes to the final score.</p>
 
             <table className="breakdown-table">
               <thead>
@@ -648,20 +644,20 @@ Additional Skills: ${additional}`;
               </thead>
               <tbody>
                 <tr>
-                  <td>Required skills found</td>
+                  <td>Structured Skill Match Coverage</td>
                   <td>{(analysisResult.score_breakdown.weights_used.skill_match * 100).toFixed(0)}%</td>
                   <td>{analysisResult.skill_match_percentage.toFixed(1)}%</td>
                   <td>{analysisResult.score_breakdown.skill_contribution.toFixed(1)} pts</td>
                 </tr>
                 <tr>
-                  <td>Keyword similarity (TF-IDF cosine)</td>
+                  <td>Lexical Baseline (TF-IDF Cosine Similarity)</td>
                   <td>{(analysisResult.score_breakdown.weights_used.text_baseline * 100).toFixed(0)}%</td>
                   <td>{(analysisResult.lexical_similarity * 100).toFixed(1)}%</td>
                   <td>{analysisResult.score_breakdown.baseline_text_contribution.toFixed(1)} pts</td>
                 </tr>
                 {analysisResult.semantic_similarity !== null && (
                   <tr>
-                    <td>Contextual similarity (Sentence-BERT all-MiniLM-L6-v2)</td>
+                    <td>Semantic Similarity (Sentence-BERT all-MiniLM-L6-v2)</td>
                     <td>{(analysisResult.score_breakdown.weights_used.semantic_match * 100).toFixed(0)}%</td>
                     <td>{(analysisResult.semantic_similarity * 100).toFixed(1)}%</td>
                     <td>{analysisResult.score_breakdown.semantic_text_contribution.toFixed(1)} pts</td>
@@ -679,21 +675,21 @@ Additional Skills: ${additional}`;
                     </tr>
                   )}
                 <tr className="total-row">
-                  <td>Overall match</td>
+                  <td>Total Compatibility Score</td>
                   <td>100%</td>
                   <td>—</td>
                   <td>{analysisResult.overall_score.toFixed(1)} / 100.0</td>
                 </tr>
               </tbody>
             </table>
-          </details>
+          </div>
 
           {/* Matched Required Skills with Evidence & Multi-Tier Classification */}
           <div className="skills-card">
             <div className="panel-header">
               <div>
                 <h3 className="panel-title">
-                  Required skills found ({analysisResult.matched_skills.length})
+                  Matched Required Skills ({analysisResult.matched_skills.length})
                 </h3>
                 <p className="panel-desc">
                   Required competencies from the job description that were evidenced in the candidate's resume, classified by match type.
@@ -772,7 +768,7 @@ Additional Skills: ${additional}`;
           {/* Missing Required Skills */}
           <div className="skills-card">
             <h3 className="panel-title">
-              Skills not found in the resume ({analysisResult.missing_required_skills.length})
+              Missing or Unevidenced Required Skills ({analysisResult.missing_required_skills.length})
             </h3>
             <p className="panel-desc">
               Skills detected in the job posting that were <b>not found or evidenced</b> in the resume text.
@@ -851,7 +847,7 @@ Additional Skills: ${additional}`;
           {analysisResult.additional_skills.length > 0 && (
             <div className="skills-card">
               <h3 className="panel-title">
-                Other skills found ({analysisResult.additional_skills.length})
+                Additional Skills Evidenced ({analysisResult.additional_skills.length})
               </h3>
               <p className="panel-desc">
                 Competencies found in the candidate's resume that were not explicitly listed as job requirements.
